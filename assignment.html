@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>志愿分配</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+    <style>
+      body {
+        background: linear-gradient(135deg, #ff9a9e, #fad0c4);
+        text-align: center;
+        padding: 20px;
+      }
+      .container {
+        max-width: 900px;
+        margin: auto;
+        background: white;
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+      }
+      hr {
+        border: none;
+        border-top: 1px solid #ff4757;
+      }
+      h1 {
+        color: #ff4757;
+        font-size: 36px;
+        margin-bottom: 5px;
+      }
+      .title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .title div {
+        margin-left: 20px;
+        font-size: 30px;
+        font-weight: bold;
+      }
+
+      .function-section {
+        margin: 0 0 10px;
+      }
+      .page-btn,
+      .upload-btn,
+      .clear-btn,
+      .assign-btn {
+        display: inline-block;
+        padding: 10px 20px;
+        margin: 10px;
+        background: #ff6b81;
+        color: white;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.3s;
+        border: none;
+        font-size: 16px;
+      }
+      .page-btn:hover,
+      .upload-btn:hover,
+      .clear-btn:hover,
+      .assign-btn:hover {
+        background: #ff4757;
+      }
+      .upload-btn input {
+        display: none;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 12px;
+        text-align: center;
+      }
+      th {
+        background: #ff6b81;
+        color: white;
+      }
+      tbody tr:nth-child(even) {
+        background: #f8f8f8;
+      }
+      #school-name {
+        width: 25%;
+      }
+      #quota-number {
+        width: 10%;
+      }
+      #assign-school {
+        width: 60%;
+      }
+      .school-section,
+      .result-section {
+        margin-top: 20px;
+      }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  </head>
+  <body>
+    <!-- 主体 -->
+    <div class="container">
+      <!-- 标题 -->
+      <h1>志愿分配 <i class="fas fa-graduation-cap"></i></h1>
+      <!-- 功能区 -->
+      <div class="function-section">
+        <label class="upload-btn"
+          >上传志愿 <input type="file" id="student-file" accept=".xlsx,.xls"
+        /></label>
+        <label class="upload-btn"
+          >上传名额 <input type="file" id="quota-file" accept=".xlsx,.xls"
+        /></label>
+        <button class="clear-btn" onclick="clearData()">
+          <i class="fas fa-trash-alt"></i> 清空所有数据
+        </button>
+        <button class="assign-btn" onclick="assignStudents()">
+          <i class="fas fa-random"></i> 开始分配
+        </button>
+      </div>
+      <!-- 功能区 end -->
+
+      <hr />
+
+      <!-- 意愿数据区 -->
+      <div class="wash-section">
+        <!-- 标题 -->
+        <div class="title">
+          <div>学生志愿</div>
+          <button class="clear-btn" onclick="clearStudentsData()">
+            <i class="fas fa-trash-alt"></i> 清空
+          </button>
+        </div>
+        <!-- 数据 -->
+        <table id="student-table">
+          <thead>
+            <tr>
+              <th>学号</th>
+              <th>姓名</th>
+              <th>第一志愿</th>
+              <th>第二志愿</th>
+              <th>第三志愿</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+
+        <!-- 分页组件 -->
+        <div id="pagination-wash"></div>
+      </div>
+      <!-- 意愿数据区 end -->
+
+      <hr />
+
+      <!-- 名额数据区 -->
+      <div class="school-section">
+        <!-- 标题 -->
+        <div class="title">
+          <div>学校名额</div>
+          <button class="clear-btn" onclick="clearQuotasData()">
+            <i class="fas fa-trash-alt"></i> 清空
+          </button>
+        </div>
+        <!-- 数据 -->
+        <table id="quota-table">
+          <thead>
+            <tr>
+              <th>学校名</th>
+              <th>名额</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+
+        <!-- 分页组件 -->
+        <div id="pagination-school"></div>
+      </div>
+      <!-- 名额数据区 end -->
+
+      <hr />
+
+      <!-- 分配结果区 -->
+      <div class="result-section">
+        <!-- 标题 -->
+        <div class="title">
+          <div>分配结果</div>
+          <button class="assign-btn" onclick="assignStudents()">
+            <i class="fas fa-random"></i> 分配
+          </button>
+          <button class="assign-btn" onclick="exportAssignmentToExcel()">
+            <i class="fas fa-file-excel"></i> 导出
+          </button>
+        </div>
+
+        <!-- 数据 -->
+        <table id="assignment-table">
+          <thead>
+            <tr>
+              <th>学号</th>
+              <th>姓名</th>
+              <th>分配学校</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+
+        <!-- 分页组件 -->
+        <div id="pagination-result"></div>
+      </div>
+      <!-- 分配结果区 end -->
+    </div>
+  </body>
+  <script>
+    // 进入页面获取数据
+    window.onload = function () {
+      const students = localStorage.getItem("students");
+      const quotas = localStorage.getItem("quotas");
+      //志愿数据
+      if (students) {
+        displayData("students");
+      } else {
+        return;
+      }
+      // 名额数据
+      if (quotas) {
+        displayData("quotas");
+      } else {
+        return;
+      }
+    };
+
+    // 上传志愿
+    document
+      .getElementById("student-file")
+      .addEventListener("change", function (event) {
+        handleFile(event.target.files[0], "students");
+      });
+
+    // 上传名额
+    document
+      .getElementById("quota-file")
+      .addEventListener("change", function (event) {
+        handleFile(event.target.files[0], "quotas");
+      });
+
+    // 读取excel
+    function handleFile(file, type) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(sheet);
+
+        // 本地存储并展示
+        localStorage.setItem(type, JSON.stringify(jsonData));
+        displayData(type);
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // 分页变量
+    // let currentPage = 1;
+    let currentPage_wash = 1;
+    let currentPage_quotas = 1;
+    const itemsPerPage = 10;
+    // 显示数据
+    function displayData(type) {
+      table = null;
+      if (type === "students") {
+        table = document.querySelector("#student-table tbody");
+      } else if (type === "quotas") {
+        table = document.querySelector("#quota-table tbody");
+      } else {
+        table = document.querySelector("#assignment-table tbody");
+      }
+      table.innerHTML = "";
+      //解析数据
+      const data = JSON.parse(localStorage.getItem(type) || "[]");
+
+      // 分页处理
+      startIndex = null;
+      if (type === "students") {
+        startIndex = (currentPage_wash - 1) * itemsPerPage;
+      } else {
+        startIndex = (currentPage_quotas - 1) * itemsPerPage;
+      }
+      const endIndex = startIndex + itemsPerPage;
+      const pagedData = data.slice(startIndex, endIndex);
+
+      pagedData.forEach((item) => {
+        const row = document.createElement("tr");
+        if (type === "students") {
+          row.innerHTML = `<td>${item["学号"] || ""}</td><td>${
+            item["姓名"] || ""
+          }</td><td id='school-name'>${
+            item["第一志愿"] || ""
+          }</td><td id='school-name'>${
+            item["第二志愿"] || ""
+          }</td><td id='school-name'>${item["第三志愿"] || ""}</td>`;
+        } else if (type === "quotas") {
+          row.innerHTML = `<td>${
+            item["学校名"] || ""
+          }</td><td id='quota-number'>${item["名额"] || ""}</td>`;
+        } else {
+          row.innerHTML = `<td>${item["学号"] || ""}</td><td>${
+            item["姓名"] || ""
+          }</td><td>${item["分配学校"] || ""}</td>`;
+        }
+        table.appendChild(row);
+      });
+
+      // 更新分页信息
+      updatePagination(data.length, type);
+    }
+    // 更新分页
+    function updatePagination(totalItems, type) {
+      const totalPages = Math.ceil(totalItems / itemsPerPage);
+      const paginationDiv =
+        type === "students"
+          ? document.querySelector("#pagination-wash")
+          : document.querySelector("#pagination-school");
+      // 换页按钮
+      if (type === "students") {
+        paginationDiv.innerHTML = `
+    <button class='page-btn' onclick="changePage(-1, '${type}')" ${
+          currentPage_wash === 1 ? "disabled" : ""
+        }>上一页</button>
+    <span>第${currentPage_wash}页/共${totalPages}页（共${totalItems}条）</span>
+    <button class='page-btn' onclick="changePage(1, '${type}')" ${
+          currentPage_wash === totalPages ? "disabled" : ""
+        }>下一页</button>
+    `;
+      } else {
+        paginationDiv.innerHTML = `
+    <button class='page-btn' onclick="changePage(-1, '${type}')" ${
+          currentPage_quotas === 1 ? "disabled" : ""
+        }>上一页</button>
+    <span>第${currentPage_quotas}页/共${totalPages}页（共${totalItems}条）</span>
+    <button class='page-btn' onclick="changePage(1, '${type}')" ${
+          currentPage_quotas === totalPages ? "disabled" : ""
+        }>下一页</button>
+    `;
+      }
+    }
+    // 更改页数
+    function changePage(step, type) {
+      if (type === "students") {
+        currentPage_wash += step;
+      } else {
+        currentPage_quotas += step;
+      }
+      displayData(type);
+    }
+
+    // 清空全部数据
+    function clearData() {
+      clearStudentsData();
+      clearQuotasData();
+    }
+
+    // 清空意愿
+    function clearStudentsData() {
+      localStorage.removeItem("students");
+      displayData("students");
+      // 清除分页组件
+      const paginationDiv = document.querySelector("#pagination-wash");
+      paginationDiv.innerHTML = "";
+    }
+
+    // 清空名额
+    function clearQuotasData() {
+      localStorage.removeItem("quotas");
+      displayData("quotas");
+      // 清除分页组件
+      const paginationDiv = document.querySelector("#pagination-school");
+      paginationDiv.innerHTML = "";
+    }
+
+    // 分配名额
+    function assignStudents() {
+      // 获取数据(学生志愿) 数组结构为 [{学号:"", 姓名:"",第一志愿:"",第二志愿:"",第三志愿:""},{},...,{}]
+      let students = JSON.parse(localStorage.getItem("students") || "[]");
+      // 获取数据(学校名额) 数组结构为 [{学校名:"", 名额:number},{},...,{}]
+      let quotas = JSON.parse(localStorage.getItem("quotas") || "[]");
+
+      if (students.length === 0 || quotas.length === 0) {
+        window.alert("请先上传数据");
+        return;
+      }
+
+      // 学校名额 {学校名:名额数}
+      let quotaMap = {};
+      quotas.forEach((q) => {
+        quotaMap[q["学校名"]] = parseInt(q["名额"], 10);
+      });
+
+      // 分配结果 结构： [{学号:"",姓名:"",分配学校:""},{},...,{}]
+      let result = [];
+      // 标记学生是否已分配
+      let assigned = new Array(students.length).fill(false);
+
+      // 按志愿顺序分配
+      const volunteerOrder = ["第一志愿", "第二志愿", "第三志愿"];
+      volunteerOrder.forEach((volunteer) => {
+        // 收集每个学校该志愿的学生索引
+        const schoolCandidates = {};
+        students.forEach((student, index) => {
+          if (!assigned[index]) {
+            const school = student[volunteer];
+            if (!schoolCandidates[school]) {
+              schoolCandidates[school] = [];
+            }
+            schoolCandidates[school].push(index);
+          }
+        });
+
+        // 对每个学校进行分配
+        for (const school in schoolCandidates) {
+          const candidates = schoolCandidates[school];
+          const availableQuota = quotaMap[school];
+          if (availableQuota >= candidates.length) {
+            // 名额充足，全部分配
+            candidates.forEach((index) => {
+              result.push({
+                学号: students[index].学号,
+                姓名: students[index].姓名,
+                分配学校: school,
+              });
+              assigned[index] = true;
+              quotaMap[school]--;
+            });
+          } else {
+            // 名额不足，随机分配
+            const shuffledCandidates = shuffleArray(candidates);
+            for (let i = 0; i < availableQuota; i++) {
+              const index = shuffledCandidates[i];
+              result.push({
+                学号: students[index].学号,
+                姓名: students[index].姓名,
+                分配学校: school,
+              });
+              assigned[index] = true;
+              quotaMap[school]--;
+            }
+          }
+        }
+      });
+
+      // 处理未分配的学生，从剩余有名额的学校中随机分配
+      const unassignedStudents = [];
+      students.forEach((student, index) => {
+        if (!assigned[index]) {
+          unassignedStudents.push(index);
+        }
+      });
+
+      unassignedStudents.forEach((index) => {
+        const availableSchools = [];
+        for (const school in quotaMap) {
+          if (quotaMap[school] > 0) {
+            availableSchools.push(school);
+          }
+        }
+        if (availableSchools.length > 0) {
+          const randomSchoolIndex = Math.floor(
+            Math.random() * availableSchools.length
+          );
+          const randomSchool = availableSchools[randomSchoolIndex];
+          result.push({
+            学号: students[index].学号,
+            姓名: students[index].姓名,
+            分配学校: randomSchool,
+          });
+          quotaMap[randomSchool]--;
+        }
+      });
+
+      // 存储
+      localStorage.setItem("result", JSON.stringify(result));
+      // 显示分配结果
+      displayAssignment();
+    }
+
+    // 洗牌函数，用于随机打乱数组顺序
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    let currentPage_result = 1;
+    // 显示分配
+    function displayAssignment() {
+      const data = JSON.parse(localStorage.getItem("result"));
+      const table = document.querySelector("#assignment-table tbody");
+      table.innerHTML = "";
+
+      const startIndex = (currentPage_result - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage;
+      const pagedData = data.slice(startIndex, endIndex);
+
+      // 分页
+      pagedData.forEach((item) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `<td>${item["学号"]}</td><td>${
+          item["姓名"]
+        }</td><td id='assign-school'>${item["分配学校"] || "未分配"}</td>`;
+        table.appendChild(row);
+      });
+
+      const totalPages = Math.ceil(data.length / itemsPerPage);
+      const paginationDiv = document.querySelector("#pagination-result");
+
+      // 换页按钮
+      paginationDiv.innerHTML = `
+    <button class='page-btn' onclick="changeResultPage(-1)" ${
+      currentPage_result === 1 ? "disabled" : ""
+    }>上一页</button>
+    <span>第${currentPage_result}页/共${totalPages}页（共${
+        data.length
+      }条）</span>
+    <button class='page-btn' onclick="changeResultPage(1)" ${
+      currentPage_result === totalPages ? "disabled" : ""
+    }>下一页</button>
+    `;
+    }
+
+    function changeResultPage(step) {
+      currentPage_result += step;
+      displayAssignment();
+    }
+
+    // 导出分配结果
+    function exportAssignmentToExcel() {
+      const result = JSON.parse(localStorage.getItem("result") || "[]");
+      const worksheet = XLSX.utils.json_to_sheet(result);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "分配结果");
+      XLSX.writeFile(workbook, "导出结果.xlsx");
+    }
+  </script>
+</html>

@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>余额管理</title>
+    <style>
+      /* 全局样式 */
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f5f5f7;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+      }
+
+      .container {
+        background-color: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        padding: 24px;
+        max-width: 400px;
+        width: 100%;
+      }
+
+      .balance {
+        font-size: 28px;
+        font-weight: bold;
+        color: #333333;
+        text-align: center;
+        margin-bottom: 24px;
+      }
+
+      .input-group {
+        margin-bottom: 16px;
+      }
+
+      .input-group label {
+        display: block;
+        font-size: 14px;
+        color: #666666;
+        margin-bottom: 8px;
+      }
+
+      .input-group input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #dddddd;
+        border-radius: 8px;
+        font-size: 14px;
+        box-sizing: border-box;
+        transition: border-color 0.3s ease;
+      }
+
+      .input-group input:focus {
+        border-color: #007aff;
+        outline: none;
+      }
+
+      .button {
+        width: 100%;
+        padding: 12px;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: bold;
+        color: #ffffff;
+        background-color: #007aff;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+      }
+
+      .button:hover {
+        background-color: #005bb5;
+      }
+
+      .undo-button {
+        background-color: #ff9500;
+        margin-top: 12px;
+      }
+
+      .undo-button:hover {
+        background-color: #e68900;
+      }
+
+      .clear-button {
+        background-color: #ff3b30;
+        margin-top: 12px;
+      }
+
+      .clear-button:hover {
+        background-color: #d32f2f;
+      }
+
+      .record-list {
+        margin-top: 24px;
+      }
+
+      .record-list h3 {
+        font-size: 18px;
+        color: #333333;
+        margin-bottom: 16px;
+      }
+
+      .record-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px;
+        border-bottom: 1px solid #eeeeee;
+        transition: background-color 0.3s ease;
+      }
+
+      .record-item:hover {
+        background-color: #f9f9f9;
+      }
+
+      .record-item span {
+        font-size: 14px;
+        color: #333333;
+      }
+
+      .record-item button {
+        background-color: #ff3b30;
+        color: #ffffff;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+      }
+
+      .record-item button:hover {
+        background-color: #d32f2f;
+      }
+
+      input {
+        margin-bottom: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="balance">当前余额: <span id="balance">0</span> 元</div>
+
+      <div class="input-group">
+        <label for="addBalance">增加余额</label>
+        <input type="number" id="addBalance" placeholder="输入金额" />
+        <button class="button" onclick="addBalance()">增加</button>
+      </div>
+
+      <div class="input-group">
+        <label for="deductAmount">扣款金额</label>
+        <input type="number" id="deductAmount" placeholder="输入扣款金额" />
+        <button class="button" onclick="deductBalance()">扣款</button>
+      </div>
+
+      <button class="button undo-button" onclick="undo()">撤销</button>
+      <button class="button clear-button" onclick="clearRecords()">清空记录</button>
+
+      <div class="record-list">
+        <h3>操作记录</h3>
+        <ul id="recordList"></ul>
+      </div>
+    </div>
+
+    <script>
+      // 从本地存储加载数据
+      function loadFromStorage() {
+        try {
+          const savedData = localStorage.getItem("waterCardData");
+          if (savedData) {
+            const data = JSON.parse(savedData);
+            balance = data.balance || 0;
+            records = data.records || [];
+            history = data.history || [];
+            updateBalance();
+            renderRecords();
+          }
+        } catch (e) {
+          console.log("读取本地存储失败:", e);
+        }
+      }
+
+      // 保存数据到本地存储
+      function saveToStorage() {
+        const data = {
+          balance: balance,
+          records: records,
+          history: history,
+        };
+        localStorage.setItem("waterCardData", JSON.stringify(data));
+      }
+
+      let balance = 0;
+      let records = [];
+      let history = []; // 用于撤销功能的历史记录
+
+      // 初始化加载数据
+      loadFromStorage();
+
+      // 增加余额
+      function addBalance() {
+        const amount = parseFloat(document.getElementById("addBalance").value);
+        if (!isNaN(amount) && amount > 0) {
+          balance += amount;
+          updateBalance();
+          addRecord(`增加余额: +${amount.toFixed(2)} 元`, "add", amount);
+          document.getElementById("addBalance").value = "";
+
+          // 保存
+          saveToStorage();
+        } else {
+          alert("请输入有效的金额");
+        }
+      }
+      // 优化用户体验，输入框状态下按下回车触发增加存款
+      document.getElementById("addBalance").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          addBalance();
+        }
+      });
+
+      // 优化用户体验，输入框状态下按下回车触发扣款
+      document.querySelector("#deductAmount").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          deductBalance();
+        }
+      });
+      // 扣款
+      function deductBalance() {
+        const amount = parseFloat(document.getElementById("deductAmount").value);
+        if (!isNaN(amount) && amount > 0 && amount <= balance) {
+          balance -= amount;
+          updateBalance();
+          addRecord(`扣款: -${amount.toFixed(2)} 元`, "deduct", amount);
+          document.getElementById("deductAmount").value = "";
+          // 保存
+          saveToStorage();
+        } else {
+          alert("请输入有效的扣款金额");
+        }
+      }
+
+      // 更新余额显示
+      function updateBalance() {
+        document.getElementById("balance").textContent = balance.toFixed(2);
+      }
+
+      // 添加操作记录
+      function addRecord(description, action, amount) {
+        const record = {
+          description: description,
+          date: new Date().toLocaleString(),
+          action: action, // 标记操作类型
+          amount: amount, // 记录金额
+        };
+        records.unshift(record);
+        history.push({ balance: balance, record: record }); // 保存到历史记录
+        renderRecords();
+        // 保存
+        saveToStorage();
+      }
+
+      // 撤销功能
+      function undo() {
+        if (history.length > 0) {
+          const lastAction = history.pop(); // 取出最后一次操作
+          const lastRecord = lastAction.record;
+
+          // 恢复余额
+          if (lastRecord.action === "add") {
+            balance -= lastRecord.amount; // 撤销增加
+          } else {
+            balance += lastRecord.amount; // 撤销扣款
+          }
+
+          // 从记录列表中移除最后一次操作
+          records.shift();
+          updateBalance();
+          renderRecords();
+
+          // 保存
+          saveToStorage();
+        } else {
+          alert("没有可撤销的操作");
+        }
+      }
+
+      // 删除记录
+      function deleteRecord(index) {
+        records.splice(index, 1); // 从记录列表中移除
+        renderRecords();
+        // 保存
+        saveToStorage();
+      }
+
+      // 清空记录
+      function clearRecords() {
+        if (confirm("确定要清空所有记录吗？")) {
+          records = []; // 清空记录列表
+          history = []; // 清空历史记录
+          renderRecords();
+          // 保存
+          saveToStorage();
+        }
+      }
+
+      // 渲染操作记录
+      function renderRecords() {
+        const recordList = document.getElementById("recordList");
+        recordList.innerHTML = "";
+        records.forEach((record, index) => {
+          const li = document.createElement("li");
+          li.className = "record-item";
+          li.innerHTML = `
+                    <span>${record.description} - ${record.date}</span>
+                    <button onclick="deleteRecord(${index})">删除</button>
+                `;
+          recordList.appendChild(li);
+        });
+      }
+
+      updateBalance();
+    </script>
+  </body>
+</html>
