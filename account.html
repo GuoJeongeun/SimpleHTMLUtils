@@ -225,6 +225,11 @@
         }
       });
 
+      // 优化用户体验，首次进入直接聚焦扣款输入框
+      document.addEventListener("DOMContentLoaded", () => {
+        document.querySelector("#deductAmount").focus();
+      });
+
       // 优化用户体验，输入框状态下按下回车触发扣款
       document.querySelector("#deductAmount").addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
